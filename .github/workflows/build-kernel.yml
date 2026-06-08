@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 180
     env:
       MAKEFLAGS: "-j$(nproc) -l$(nproc)"
-      KCFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than"
-      KCPPFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than"
+      KCFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
+      KCPPFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
       LDFLAGS: "-O3"
     steps:
       - name: Checkout (depth=1, no tags)
