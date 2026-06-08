@@ -49,12 +49,25 @@ jobs:
             build-essential bc flex bison libssl-dev libelf-dev \
             libncurses-dev dwarves pahole wget p7zip-full ccache
 
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('.github/workflows/build-kernel.yml') }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ hashFiles('.github/workflows/build-kernel.yml') }}-
+            ccache-${{ runner.os }}-
+
       - name: Setup ccache
         run: |
           ccache --max-size=4G
           ccache --set-config=compression=true
           ccache --set-config=compression_level=1
           ccache -z
+          echo "CCACHE_DIR=~/.ccache" >> $GITHUB_ENV
+          echo "CCACHE_MAXSIZE=4G" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+          echo "CCACHE_COMPRESSLEVEL=1" >> $GITHUB_ENV
 
       - name: Setup Clang toolchain
         run: |
