@@ -14,9 +14,9 @@ jobs:
     timeout-minutes: 180
     env:
       MAKEFLAGS: "-j$(nproc) -l$(nproc)"
-      KCFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
-      KCPPFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
-      LDFLAGS: "-O3"
+      KCFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a76 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
+      KCPPFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a76 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
+      LDFLAGS: "-O3 -flto=thin -Wl,--gc-sections -Wl,--icf=all -Wl,-z,now -Wl,-z,relro"
     steps:
       - name: Checkout (depth=1, no tags)
         uses: actions/checkout@v6
@@ -92,7 +92,18 @@ jobs:
           export HOSTCXX="ccache clang++"
           export AR=llvm-ar
           export AS=llvm-as
-          make O=out/gki ARCH=arm64 LLVM=1 Image -j4
+          
+          # Force ThinLTO and optimization flags through entire build
+          export KCFLAGS="${KCFLAGS} -flto=thin"
+          export KCPPFLAGS="${KCPPFLAGS} -flto=thin"
+          export LDFLAGS="${LDFLAGS} -flto=thin"
+          
+          make O=out/gki ARCH=arm64 \
+            LLVM=1 \
+            KCFLAGS="${KCFLAGS}" \
+            KCPPFLAGS="${KCPPFLAGS}" \
+            LDFLAGS="${LDFLAGS}" \
+            Image -j4
 
       - name: Verify Image
         run: test -f out/gki/arch/arm64/boot/Image
