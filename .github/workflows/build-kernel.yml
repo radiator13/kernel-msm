@@ -1,0 +1,91 @@
+name: Build Kernel
+
+on:
+  push:
+    branches: [ motog57 ]
+  pull_request:
+    branches: [ motog57 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build gki_defconfig
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MAKEFLAGS: "-j$(nproc) -l$(nproc)"
+      KCFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized"
+      KCPPFLAGS: "-O3 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized"
+      LDFLAGS: "-O3"
+    steps:
+      - name: Checkout (depth=1, no tags)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: motog57
+          fetch-tags: false
+          set-safe-directory: false
+
+      - name: Maximize build performance
+        run: |
+          echo "CPUs: $(nproc)"
+          echo "RAM: $(free -h | awk '/^Mem:/ {print $2}')"
+          
+          # Disable mitigations for speed
+          echo "mitigations=off" | sudo tee -a /etc/default/grub >/dev/null
+          sudo update-grub 2>/dev/null || true
+          
+          # Set CPU governor to performance
+          echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 2>/dev/null || true
+          
+          # Disable swap for speed
+          sudo swapoff -a 2>/dev/null || true
+
+      - name: Install minimal dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            build-essential bc flex bison libssl-dev libelf-dev \
+            libncurses-dev dwarves pahole wget p7zip-full ccache
+
+      - name: Setup ccache
+        run: |
+          ccache --max-size=4G
+          ccache --set-config=compression=true
+          ccache --set-config=compression_level=1
+          ccache -z
+
+      - name: Setup Clang toolchain
+        run: |
+          mkdir -p toolchain && cd toolchain
+          wget -q https://github.com/Mandi-Sa/clang/releases/download/amd64-kernel-arm_static-23/llvm23.0.0-binutils2.45.1_amd64-kernel-arm_static-20260531.7z
+          7z x llvm23.0.0-binutils2.45.1_amd64-kernel-arm_static-20260531.7z -y
+          echo "CLANG_PATH=$PWD" >> "$GITHUB_ENV"
+
+      - name: gki_defconfig
+        run: make O=out/gki ARCH=arm64 gki_defconfig
+
+      - name: Build Image
+        run: |
+          export PATH="${{ env.CLANG_PATH }}/bin:$PATH"
+          export CC="ccache clang"
+          export LD=ld.lld
+          export NM=llvm-nm
+          export OBJCOPY=llvm-objcopy
+          export OBJDUMP=llvm-objdump
+          export STRIP=llvm-strip
+          export HOSTCC="ccache clang"
+          export HOSTCXX="ccache clang++"
+          export AR=llvm-ar
+          export AS=llvm-as
+          make O=out/gki ARCH=arm64 LLVM=1 Image -j4
+
+      - name: Verify Image
+        run: test -f out/gki/arch/arm64/boot/Image
+
+      - name: Upload Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-gki-${{ github.run_number }}
+          path: out/gki/arch/arm64/boot/Image
+          if-no-files-found: error
