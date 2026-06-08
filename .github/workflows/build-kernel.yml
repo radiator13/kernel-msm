@@ -30,6 +30,7 @@ jobs:
         run: |
           echo "CPUs: $(nproc)"
           echo "RAM: $(free -h | awk '/^Mem:/ {print $2}')"
+          echo "BUILD_START=$(date -u)" >> $GITHUB_ENV
           
           # Disable mitigations for speed
           echo "mitigations=off" | sudo tee -a /etc/default/grub >/dev/null
@@ -82,6 +83,83 @@ jobs:
 
       - name: Verify Image
         run: test -f out/gki/arch/arm64/boot/Image
+
+      - name: Build Metrics & Evaluation
+        run: |
+          echo "## Build Evaluation Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Kernel version
+          KERNEL_VER=$(make -s O=out/gki ARCH=arm64 kernelversion 2>/dev/null || echo "unknown")
+          echo "### Kernel Version: $KERNEL_VER" >> $GITHUB_STEP_SUMMARY
+          
+          # Build time
+          BUILD_END=$(date -u)
+          START_EPOCH=$(date -d "$BUILD_START" +%s)
+          END_EPOCH=$(date -d "$BUILD_END" +%s)
+          ELAPSED=$((END_EPOCH - START_EPOCH))
+          ELAPSED_MIN=$((ELAPSED / 60))
+          ELAPSED_SEC=$((ELAPSED % 60))
+          echo "### Build Time" >> $GITHUB_STEP_SUMMARY
+          echo "- Started: $BUILD_START" >> $GITHUB_STEP_SUMMARY
+          echo "- Finished: $BUILD_END" >> $GITHUB_STEP_SUMMARY
+          echo "- Elapsed: ${ELAPSED_MIN}m ${ELAPSED_SEC}s" >> $GITHUB_STEP_SUMMARY
+          
+          # Image size
+          IMG_SIZE=$(stat -c%s out/gki/arch/arm64/boot/Image 2>/dev/null || echo 0)
+          IMG_SIZE_MB=$((IMG_SIZE / 1024 / 1024))
+          echo "### Output Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: ${IMG_SIZE_MB} MB ($IMG_SIZE bytes)" >> $GITHUB_STEP_SUMMARY
+          
+          # vmlinux size
+          if [ -f out/gki/vmlinux ]; then
+            VMLINUX_SIZE=$(stat -c%s out/gki/vmlinux)
+            VMLINUX_MB=$((VMLINUX_SIZE / 1024 / 1024))
+            echo "- vmlinux: ${VMLINUX_MB} MB" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Object files count
+          OBJ_COUNT=$(find out/gki -name "*.o" -type f 2>/dev/null | wc -l)
+          echo "- Object files: $OBJ_COUNT" >> $GITHUB_STEP_SUMMARY
+          
+          # Module count (.ko files)
+          KO_COUNT=$(find out/gki -name "*.ko" -type f 2>/dev/null | wc -l)
+          echo "- Kernel modules (.ko): $KO_COUNT" >> $GITHUB_STEP_SUMMARY
+          
+          # DTB count
+          DTB_COUNT=$(find out/gki/arch/arm64/boot/dts -name "*.dtb" -type f 2>/dev/null | wc -l)
+          echo "- DTBs: $DTB_COUNT" >> $GITHUB_STEP_SUMMARY
+          
+          # Config stats
+          CONFIG_OPTS=$(grep -c "^CONFIG_" out/gki/.config 2>/dev/null || echo 0)
+          CONFIG_Y=$(grep -c "^CONFIG_.*=y" out/gki/.config 2>/dev/null || echo 0)
+          CONFIG_M=$(grep -c "^CONFIG_.*=m" out/gki/.config 2>/dev/null || echo 0)
+          CONFIG_N=$(grep -c "^# CONFIG_.* is not set" out/gki/.config 2>/dev/null || echo 0)
+          echo "### Kernel Config" >> $GITHUB_STEP_SUMMARY
+          echo "- Total CONFIG_ options: $CONFIG_OPTS" >> $GITHUB_STEP_SUMMARY
+          echo "- Built-in (=y): $CONFIG_Y" >> $GITHUB_STEP_SUMMARY
+          echo "- Modules (=m): $CONFIG_M" >> $GITHUB_STEP_SUMMARY
+          echo "- Disabled: $CONFIG_N" >> $GITHUB_STEP_SUMMARY
+          echo "- .config size: $(stat -c%s out/gki/.config 2>/dev/null || echo 0) bytes" >> $GITHUB_STEP_SUMMARY
+          
+          # ccache stats
+          echo "### ccache Statistics" >> $GITHUB_STEP_SUMMARY
+          ccache -s >> $GITHUB_STEP_SUMMARY
+          
+          # Compiler info
+          echo "### Toolchain" >> $GITHUB_STEP_SUMMARY
+          ${CLANG_PATH}/bin/clang --version | head -1 >> $GITHUB_STEP_SUMMARY
+          echo "- LLVM tools: ld.lld, llvm-nm, llvm-objcopy, llvm-objdump, llvm-strip, llvm-ar, llvm-as" >> $GITHUB_STEP_SUMMARY
+          
+          # Build host info
+          echo "### Build Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- CPUs: $(nproc)" >> $GITHUB_STEP_SUMMARY
+          echo "- RAM: $(free -h | awk '/^Mem:/ {print $2}')" >> $GITHUB_STEP_SUMMARY
+          echo "- Disk: $(df -h /home/runner | awk 'NR==2 {print $4}') free" >> $GITHUB_STEP_SUMMARY
+          
+          # Warning summary (from build log if available)
+          echo "### Build Warnings Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- (Check full log for details)" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Image
         uses: actions/upload-artifact@v4
