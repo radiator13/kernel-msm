@@ -94,12 +94,12 @@ jobs:
           export AR=llvm-ar
           export AS=llvm-as
           
-          # Host tools MUST NOT use LTO (they run on build host, need native ELF)
-          export HOSTCFLAGS="-O2 -fno-lto"
-          export HOSTCXXFLAGS="-O2 -fno-lto"
+          # Host tools: native x86_64, NO ARM flags, NO LTO
+          export HOSTCFLAGS="-O2 -fno-lto -march=x86-64 -mtune=generic"
+          export HOSTCXXFLAGS="-O2 -fno-lto -march=x86-64 -mtune=generic"
           export HOSTLDFLAGS="-O2 -fno-lto"
           
-          # Target kernel: ThinLTO + optimizations
+          # Target kernel: ThinLTO + optimizations for ARM
           export KBUILD_CFLAGS="${KCFLAGS}"
           export KBUILD_CPPFLAGS="${KCPPFLAGS}"
           export KBUILD_LDFLAGS="${LDFLAGS}"
