@@ -94,21 +94,22 @@ jobs:
           export AR=llvm-ar
           export AS=llvm-as
           
-          # Host tools: native x86_64, NO ARM flags, NO LTO - use proper kernel vars
+          # Host tools: native x86_64, NO ARM flags, NO LTO
           export HOSTCFLAGS="-O2 -fno-lto -march=x86-64 -mtune=generic"
           export HOSTCXXFLAGS="-O2 -fno-lto -march=x86-64 -mtune=generic"
           export HOSTLDFLAGS="-O2 -fno-lto"
           
-          # Target kernel: ThinLTO + optimizations for ARM - use CROSS_COMPILE flags
-          export CFLAGS="${KCFLAGS}"
-          export CXXFLAGS="${KCPPFLAGS}"
-          export LDFLAGS="${LDFLAGS}"
+          # Target kernel ONLY: use KBUILD_CFLAGS/CPPFLAGS which are kernel-specific
+          # These do NOT affect host tools (scripts/, tools/, etc)
+          export KBUILD_CFLAGS="${KCFLAGS}"
+          export KBUILD_CPPFLAGS="${KCPPFLAGS}"
+          export KBUILD_LDFLAGS="${LDFLAGS}"
           
           make O=out/gki ARCH=arm64 \
             LLVM=1 \
-            CFLAGS="${CFLAGS}" \
-            CXXFLAGS="${CXXFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
+            KBUILD_CFLAGS="${KBUILD_CFLAGS}" \
+            KBUILD_CPPFLAGS="${KBUILD_CPPFLAGS}" \
+            KBUILD_LDFLAGS="${KBUILD_LDFLAGS}" \
             HOSTCFLAGS="${HOSTCFLAGS}" \
             HOSTCXXFLAGS="${HOSTCXXFLAGS}" \
             HOSTLDFLAGS="${HOSTLDFLAGS}" \
