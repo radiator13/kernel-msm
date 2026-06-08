@@ -90,19 +90,28 @@ jobs:
           export STRIP=llvm-strip
           export HOSTCC="ccache clang"
           export HOSTCXX="ccache clang++"
+          export HOSTLD=ld.lld
           export AR=llvm-ar
           export AS=llvm-as
           
-          # Force ThinLTO and optimization flags through entire build
-          export KCFLAGS="${KCFLAGS} -flto=thin"
-          export KCPPFLAGS="${KCPPFLAGS} -flto=thin"
-          export LDFLAGS="${LDFLAGS} -flto=thin"
+          # Host tools MUST NOT use LTO (they run on build host, need native ELF)
+          export HOSTCFLAGS="-O2 -fno-lto"
+          export HOSTCXXFLAGS="-O2 -fno-lto"
+          export HOSTLDFLAGS="-O2 -fno-lto"
+          
+          # Target kernel: ThinLTO + optimizations
+          export KBUILD_CFLAGS="${KCFLAGS}"
+          export KBUILD_CPPFLAGS="${KCPPFLAGS}"
+          export KBUILD_LDFLAGS="${LDFLAGS}"
           
           make O=out/gki ARCH=arm64 \
             LLVM=1 \
-            KCFLAGS="${KCFLAGS}" \
-            KCPPFLAGS="${KCPPFLAGS}" \
-            LDFLAGS="${LDFLAGS}" \
+            KBUILD_CFLAGS="${KBUILD_CFLAGS}" \
+            KBUILD_CPPFLAGS="${KBUILD_CPPFLAGS}" \
+            KBUILD_LDFLAGS="${KBUILD_LDFLAGS}" \
+            HOSTCFLAGS="${HOSTCFLAGS}" \
+            HOSTCXXFLAGS="${HOSTCXXFLAGS}" \
+            HOSTLDFLAGS="${HOSTLDFLAGS}" \
             Image -j4
 
       - name: Verify Image
