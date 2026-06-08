@@ -14,8 +14,8 @@ jobs:
     timeout-minutes: 180
     env:
       MAKEFLAGS: "-j$(nproc) -l$(nproc)"
-      KCFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a76 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
-      KCPPFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a76 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
+      KCFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a78 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
+      KCPPFLAGS: "-O3 -flto=thin -fomit-frame-pointer -fno-semantic-interposition -fdata-sections -ffunction-sections -march=armv8.2-a -mtune=cortex-a78 -Wno-error=macro-redefined -Wno-error=default-const-init-field-unsafe -Wno-error=default-const-init-var-unsafe -Wno-error=uninitialized -Wno-error=frame-larger-than -Wno-error=attribute-warning"
       LDFLAGS: "-O3 -flto=thin -Wl,--gc-sections -Wl,--icf=all -Wl,-z,now -Wl,-z,relro"
     steps:
       - name: Checkout (depth=1, no tags)
